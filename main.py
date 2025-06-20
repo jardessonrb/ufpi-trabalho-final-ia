@@ -10,49 +10,67 @@ API_KEY = os.getenv('API_KEY')
 VIDEO_ID = 'rPXasD5We5k'
 BASE_URL = 'https://www.googleapis.com/youtube/v3/'
 
-def get_comments(video_id, api_key):
-    comments = []
-    next_page_token = None
+canal_cache = {}
 
-    while True:
-        params = {
-            'part': 'snippet',
-            'videoId': video_id,
-            'key': api_key,
-            'maxResults': 100,
-            'textFormat': 'plainText',
-            'pageToken': next_page_token
-        }
+def get_video_info(video_id, api_key):
+    params = {
+        'part': 'snippet',
+        'id': video_id,
+        'key': api_key
+    }
 
-        response = requests.get(BASE_URL + 'commentThreads', params=params)
-        if response.status_code != 200:
-            print('Erro:', response.text)
-            break
+    response = requests.get(BASE_URL + 'videos', params=params)
+    if response.status_code != 200:
+        print('Erro ao buscar vídeo:', response.text)
+        return {}
 
-        data = response.json()
-        for item in data.get('items', []):
-            top_comment = item['snippet']['topLevelComment']['snippet']
-            comment_data = {
-                'comment': top_comment['textDisplay'],
-                'author': top_comment['authorDisplayName'],
-                'channel_id': top_comment['authorChannelId'].get('value', 'N/A'),
-                'replies': []
-            }
+    data = response.json()
+    if not data['items']:
+        return {}
 
-            total_replies = item['snippet'].get('totalReplyCount', 0)
-            if total_replies > 0:
-                comment_id = item['snippet']['topLevelComment']['id']
-                comment_data['replies'] = get_replies(comment_id, api_key)
+    snippet = data['items'][0]['snippet']
+    return {
+        'video_id': video_id,
+        'title': snippet['title'],
+        'description': snippet.get('description', ''),
+        'publishedAt': snippet['publishedAt'],
+        'channelTitle': snippet['channelTitle'],
+        'channelId': snippet['channelId']
+    }
 
-            comments.append(comment_data)
+def get_channel_info(channel_id, api_key):
+    if channel_id in canal_cache:
+        return canal_cache[channel_id]
 
-        next_page_token = data.get('nextPageToken')
-        if not next_page_token:
-            break
+    params = {
+        'part': 'snippet,statistics',
+        'id': channel_id,
+        'key': api_key
+    }
 
-        time.sleep(1)  # evitar rate limit
+    response = requests.get(BASE_URL + 'channels', params=params)
+    if response.status_code != 200:
+        print('Erro canal:', response.text)
+        canal_cache[channel_id] = {}
+        return {}
 
-    return comments
+    data = response.json()
+    if not data['items']:
+        canal_cache[channel_id] = {}
+        return {}
+
+    item = data['items'][0]
+    info = {
+        'title': item['snippet']['title'],
+        'description': item['snippet'].get('description', ''),
+        'publishedAt': item['snippet']['publishedAt'],
+        'subscriberCount': item['statistics'].get('subscriberCount', 'N/A'),
+        'videoCount': item['statistics'].get('videoCount', 'N/A'),
+        'viewCount': item['statistics'].get('viewCount', 'N/A')
+    }
+
+    canal_cache[channel_id] = info
+    return info
 
 def get_replies(parent_id, api_key):
     replies = []
@@ -69,30 +87,87 @@ def get_replies(parent_id, api_key):
 
         response = requests.get(BASE_URL + 'comments', params=params)
         if response.status_code != 200:
-            print('Erro nas replies:', response.text)
+            print('Erro replies:', response.text)
             break
 
         data = response.json()
         for item in data.get('items', []):
-            reply = item['snippet']
+            snippet = item['snippet']
+            channel_id = snippet['authorChannelId'].get('value', 'N/A')
             replies.append({
-                'comment': reply['textDisplay'],
-                'author': reply['authorDisplayName'],
-                'channel_id': reply['authorChannelId'].get('value', 'N/A')
+                'comment': snippet['textDisplay'],
+                'author': snippet['authorDisplayName'],
+                'channel_id': channel_id,
+                'publishedAt': snippet['publishedAt'],
+                'channel_info': get_channel_info(channel_id, api_key)
             })
 
         next_page_token = data.get('nextPageToken')
         if not next_page_token:
             break
-
-        time.sleep(1)  # evitar rate limit
+        time.sleep(1)
 
     return replies
 
-if __name__ == '__main__':
-    resultado = get_comments(VIDEO_ID, API_KEY)
+def get_comments(video_id, api_key):
+    comments = []
+    next_page_token = None
 
-    with open('comentarios_youtube.json', 'w', encoding='utf-8') as f:
+    while True:
+        params = {
+            'part': 'snippet',
+            'videoId': video_id,
+            'key': api_key,
+            'maxResults': 100,
+            'textFormat': 'plainText',
+            'pageToken': next_page_token
+        }
+
+        response = requests.get(BASE_URL + 'commentThreads', params=params)
+        if response.status_code != 200:
+            print('Erro comentários:', response.text)
+            break
+
+        data = response.json()
+        for item in data.get('items', []):
+            snippet = item['snippet']['topLevelComment']['snippet']
+            channel_id = snippet['authorChannelId'].get('value', 'N/A')
+
+            comment_data = {
+                'comment': snippet['textDisplay'],
+                'author': snippet['authorDisplayName'],
+                'channel_id': channel_id,
+                'publishedAt': snippet['publishedAt'],
+                'channel_info': get_channel_info(channel_id, api_key),
+                'replies': []
+            }
+
+            if item['snippet'].get('totalReplyCount', 0) > 0:
+                comment_id = item['snippet']['topLevelComment']['id']
+                comment_data['replies'] = get_replies(comment_id, api_key)
+
+            comments.append(comment_data)
+
+        next_page_token = data.get('nextPageToken')
+        if not next_page_token:
+            break
+        time.sleep(1)
+
+    return comments
+
+if __name__ == '__main__':
+    video_info = get_video_info(VIDEO_ID, API_KEY)
+    print("Dados do vídeo:", json.dumps(video_info, indent=2, ensure_ascii=False))
+
+    comentarios = get_comments(VIDEO_ID, API_KEY)
+    print(f'Total de comentários principais coletados: {len(comentarios)}')
+
+    resultado = {
+        'video': video_info,
+        'comments': comentarios
+    }
+
+    with open('comentarios_completos.json', 'w', encoding='utf-8') as f:
         json.dump(resultado, f, ensure_ascii=False, indent=2)
 
-    print(f'Total de comentários principais coletados: {len(resultado)}')
+    print('Arquivo salvo: comentarios_completos.json')
