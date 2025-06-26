@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-
+#PImQpU2KvTs, fK_Mfk34bLU, QTU2ngTKq7I, ZKCNeDb1ZAI, pZvY8ppou3k, reb50Gr4DT8, _Ms4UoHTrOU
 API_KEY = os.getenv('API_KEY')
-VIDEO_ID = 'rPXasD5We5k'
+VIDEO_ID = 'ZcMHnzuinUI'
 BASE_URL = 'https://www.googleapis.com/youtube/v3/'
 
 canal_cache = {}
@@ -21,7 +21,7 @@ def get_video_info(video_id, api_key):
 
     response = requests.get(BASE_URL + 'videos', params=params)
     if response.status_code != 200:
-        print('Erro ao buscar vídeo:', response.text)
+
         return {}
 
     data = response.json()
@@ -50,7 +50,7 @@ def get_channel_info(channel_id, api_key):
 
     response = requests.get(BASE_URL + 'channels', params=params)
     if response.status_code != 200:
-        print('Erro canal:', response.text)
+
         canal_cache[channel_id] = {}
         return {}
 
@@ -87,7 +87,7 @@ def get_replies(parent_id, api_key):
 
         response = requests.get(BASE_URL + 'comments', params=params)
         if response.status_code != 200:
-            print('Erro replies:', response.text)
+    
             break
 
         data = response.json()
@@ -110,6 +110,7 @@ def get_replies(parent_id, api_key):
     return replies
 
 def get_comments(video_id, api_key):
+    print('get_comments') 
     comments = []
     next_page_token = None
 
@@ -125,7 +126,7 @@ def get_comments(video_id, api_key):
 
         response = requests.get(BASE_URL + 'commentThreads', params=params)
         if response.status_code != 200:
-            print('Erro comentários:', response.text)
+    
             break
 
         data = response.json()
@@ -157,17 +158,15 @@ def get_comments(video_id, api_key):
 
 if __name__ == '__main__':
     video_info = get_video_info(VIDEO_ID, API_KEY)
-    print("Dados do vídeo:", json.dumps(video_info, indent=2, ensure_ascii=False))
 
     comentarios = get_comments(VIDEO_ID, API_KEY)
-    print(f'Total de comentários principais coletados: {len(comentarios)}')
 
     resultado = {
         'video': video_info,
         'comments': comentarios
     }
 
-    with open('comentarios_completos.json', 'w', encoding='utf-8') as f:
+    print('Salvando arquivo') 
+    with open(f'comentarios_completos_{VIDEO_ID}_{time.time()}.json', 'w', encoding='utf-8') as f:
         json.dump(resultado, f, ensure_ascii=False, indent=2)
 
-    print('Arquivo salvo: comentarios_completos.json')
