@@ -5,8 +5,8 @@ from dateutil import parser
 
 VIDEO_ID = 'ZcMHnzuinUI'
 # Arquivo de entrada (JSON consolidado)
-arquivo_json = f'comentarios_com_replies_{VIDEO_ID}.json'
-arquivo_saida = f'comentarios_estruturados_{VIDEO_ID}.csv'
+arquivo_json = f'./comentarios_com_replies/comentarios_com_replies_json_completo.json'
+arquivo_saida = f'./comentarios_padrao_csv/comentarios_estruturados_v2.csv'
 
 def dias_criacao_canal(channel_info):
     if 'publishedAt' in channel_info:

@@ -7,7 +7,7 @@ import os
 load_dotenv()
 #PImQpU2KvTs, fK_Mfk34bLU, QTU2ngTKq7I, ZKCNeDb1ZAI, pZvY8ppou3k, reb50Gr4DT8, _Ms4UoHTrOU
 API_KEY = os.getenv('API_KEY')
-VIDEO_ID = 'ZcMHnzuinUI'
+VIDEO_ID = 'tC6ncJyBUUk'
 BASE_URL = 'https://www.googleapis.com/youtube/v3/'
 
 canal_cache = {}
